@@ -93,7 +93,9 @@ func (p *Provider) doRequest(ctx context.Context, baseURL, zone string, record l
 	}
 
 	q := u.Query()
-	q.Set("host", libdns.AbsoluteName(record.RR().Name, zone))
+	// IMPORTANT: ZoneEdit's dynamic update endpoint rejects trailing dots, trim it.
+	host, _ := strings.CutSuffix(libdns.AbsoluteName(record.RR().Name, zone), ".")
+	q.Set("host", host)
 	q.Set("rdata", strings.Trim(record.RR().Data, `"`))
 	u.RawQuery = q.Encode()
 	fmt.Printf("doRequest: %s\n", u.String())
@@ -107,17 +109,18 @@ func (p *Provider) doRequest(ctx context.Context, baseURL, zone string, record l
 	if err != nil {
 		return fmt.Errorf("zoneedit request: %w", err)
 	}
-	fmt.Printf("doRequest: %s\n", resp)
 	defer resp.Body.Close()
 
 	// Read body to ensure connection is properly closed
 	body, err := io.ReadAll(resp.Body)
+	fmt.Printf("doRequest: %s\n", string(body))
+
 	if err != nil {
 		return fmt.Errorf("reading response: %w", err)
 	}
 
-	if resp.StatusCode >= 300 {
-		return fmt.Errorf("unsuccessful status code: %s - body: %s", resp.Status, string(body))
+	if resp.StatusCode >= 300 || strings.Contains(string(body), "ERROR") {
+		return fmt.Errorf("request failed: status: %s - body: %s", resp.Status, string(body))
 	}
 
 	return nil
