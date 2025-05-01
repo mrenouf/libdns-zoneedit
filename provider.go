@@ -96,7 +96,7 @@ func (p *Provider) doRequest(ctx context.Context, baseURL, zone string, record l
 	q.Set("host", libdns.AbsoluteName(record.RR().Name, zone))
 	q.Set("rdata", strings.Trim(record.RR().Data, `"`))
 	u.RawQuery = q.Encode()
-
+	fmt.Printf("doRequest: %s\n", u.String())
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), nil)
 	if err != nil {
 		return fmt.Errorf("http.NewRequestWithContext: %w", err)
@@ -107,6 +107,7 @@ func (p *Provider) doRequest(ctx context.Context, baseURL, zone string, record l
 	if err != nil {
 		return fmt.Errorf("zoneedit request: %w", err)
 	}
+	fmt.Printf("doRequest: %s\n", resp)
 	defer resp.Body.Close()
 
 	// Read body to ensure connection is properly closed
